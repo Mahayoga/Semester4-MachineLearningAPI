@@ -1,10 +1,12 @@
-from flask import Flask
+from flask import Flask, jsonify
+from flask_cors import CORS
 from flask import request
 from pymongo import MongoClient
 from flask import render_template
 from markupsafe import escape
 
 app = Flask(__name__)
+CORS(app)
 client = MongoClient('mongodb://localhost:27017/')
 db = client['diabetes_db']
 collection = db['user']
@@ -43,14 +45,14 @@ def register():
             'nama_depan': data['nama_depan'],
             'nama_belakang': data['nama_belakang'],
             'role': data['role'],
-            'email': data['email']
+            'email': data['email'],
+            'password': data['password'],
         })
         result = collection.find_one(
             {
                 '_id': res.inserted_id
             }
         )
-        print(result)
         return {
             'status': 'success',
             'data_user': {
