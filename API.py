@@ -68,3 +68,46 @@ def register():
             'status': 'error',
             'msg': 'Terjadi kesalahan!'
         }
+    
+
+@app.route('/get/data-pasien', methods=['GET'])
+def ambilDataUser():
+    try:
+        dataPasien = collection.find({})
+        hasil = []
+        for data in dataPasien:
+            data['_id'] = str(data['_id'])
+            hasil.append(data)
+
+        return {
+            'status': 'success',
+            'data_pasien': hasil
+        }
+    except:
+        return {
+            'status': 'error',
+            'msg': 'Terjadi kesalahan!'
+        }
+    
+@app.route('/add/data-pasien', methods=['POST'])
+def simpanDataUser():
+    try:
+        requestData = request.json
+        insertData = collection.insert_one({
+            'nama_depan': requestData['nama_depan'],
+            'nama_belakang': requestData['nama_belakang'],
+            'umur': requestData['umur'],
+            'jenis_kelamin': requestData['jenis_kelamin'],
+            'alamat': requestData['alamat'],
+            'role': 'user',
+            'email': requestData['email'],
+            'password': requestData['password'],
+        })
+        return {
+            'status': 'success'
+        }
+    except:
+        return {
+            'status': 'error',
+            'msg': 'Terjadi kesalahan!'
+        }
