@@ -33,10 +33,15 @@ def login():
                 'status': 'need_action',
                 'msg': 'Email kamu sudah terdaftar, dan butuh verifikasi!'
             }
+        elif resultUser['username'] == '':
+            return {
+                'status': 'need_action_username',
+                'msg': 'Kamu belum mendaftarkan username!'
+            }
         resultPasien = collectionPasien.find_one({
             'id_user': resultUser['_id']
         })
-        print(resultPasien)
+        # print(resultPasien)
         return {
             'status': 'success',
             'data_user': {
@@ -48,6 +53,7 @@ def login():
                 'umur': resultPasien['umur'],
                 'gender': resultPasien['gender'],
                 'alamat': resultPasien['alamat'],
+                'username': resultUser['username'],
                 'role': resultUser['role'],
                 'email': resultUser['email']
             }
@@ -171,6 +177,31 @@ def verifikasi_email():
             'msg': 'Kesalahan Server!'
         }
 
+@app.route('/create-username', methods=['POST'])
+def createUsername():
+    data = request.json
+    if data['username'] != '':
+        res = collectionUser.update_one(
+            {
+                'email': data['email']
+            },
+            {
+                '$set': {
+                    'username': data['username']
+                }
+            }
+        )
+
+        return {
+            'status': 'success',
+            'msg': 'Username berhasil dibuat!'
+        }
+    else:
+        return {
+            'status': 'need_action',
+            'msg': 'Silahkan isi username yang valid'
+        }
+
 @app.route('/register', methods=['POST'])
 def register():
     try:
@@ -196,6 +227,7 @@ def register():
             'role': data['role'],
             'email': data['email'],
             'password': data['password'],
+            'username': '',
             'is_verified': False
         })
         resPasien = collectionPasien.insert_one({
