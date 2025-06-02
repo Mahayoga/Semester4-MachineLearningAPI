@@ -1,5 +1,7 @@
 import os
 from dotenv import load_dotenv
+import numpy as np
+import joblib
 import random as rd
 import smtplib
 from email.message import EmailMessage
@@ -20,6 +22,7 @@ db = client['diabetes_db']
 collectionUser = db['user']
 collectionPasien = db['data_pasien']
 collectionVerifikasi = db['verifikasi_email']
+collectionHistori = db['histori']
 
 # Website Login
 @app.route('/login', methods=['POST'])
@@ -379,3 +382,68 @@ def simpanDataUser():
             'status': 'error',
             'msg': 'Terjadi kesalahan!'
         }
+    
+@app.route('/lakukan-prediksi', methods=['POST'])
+def lakukanPrediksi():
+    try:
+        data = request.json
+        load_model = joblib.load('model/SVM-Model.pkl')
+        load_scaler = joblib.load('model/SVM-StandartScaler.pkl')
+
+        data_norm = load_scaler.transform(
+            np.array([[
+                float(data['pregnancies']),
+                float(data['glucose']),
+                float(data['blood_pressure']),
+                float(data['skin_thickness']),
+                float(data['insulin']),
+                float(data['bmi']),
+                float(data['diabetes_pedigree_function']),
+                float(data['age'])
+            ]])
+        )
+        result = load_model.predict(data_norm)
+
+        res = collectionHistori.insert_one({
+            'pregnancies': float(data['pregnancies']),
+            'glucose': float(data['glucose']),
+            'blood_pressure': float(data['blood_pressure']),
+            'skin_thickness': float(data['skin_thickness']),
+            'insulin': float(data['insulin']),
+            'bmi': float(data['bmi']),
+            'diabetes_pedigree_function': float(data['diabetes_pedigree_function']),
+            'age': float(data['age']),
+            'outcome': int(result[0]),
+            'id_user': data['id_user'],
+            'created_at': datetime.now(timezone.utc),
+        })
+
+        return {
+            'status': 'success',
+            'result': int(result[0]),
+            'data': data
+        }
+    except Exception as e:
+        return {
+            'status': 'error',
+            'msg': 'Kesalahan pada server!',
+            'stack': e
+        }   
+
+@app.route('/get/data-histori/user', methods=['POST'])
+def getDataHistoriUser():
+    data = request.json
+    res = collectionHistori.find({
+        'id_user': data['id_user']
+    }).sort('created_at', pymongo.DESCENDING)
+    hasil = []
+    for data_histori in res:
+        data_histori['_id'] = str(data_histori['_id'])
+        data_histori['id_user'] = str(data_histori['id_user'])
+        hasil.append(data_histori)
+
+    return {
+        'status': 'success',
+        'data_histori': hasil
+    }
+
