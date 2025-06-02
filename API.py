@@ -66,26 +66,30 @@ def login():
     
 @app.route('/verifikasi-email', methods=['POST'])
 def verifikasi_email():
-    try:
+    # try:
         data = request.json
         if data['action'] == 'verification_email':
             kode_verifikasi = str(rd.randint(0, 9)) + str(rd.randint(0, 9)) + str(rd.randint(0, 9)) + str(rd.randint(0, 9)) + str(rd.randint(0, 9)) + str(rd.randint(0, 9))
             milisecond = int(datetime.now(timezone.utc).timestamp())
-            res = collectionVerifikasi.find_one({
-                'email': data['email'],
-                'expired_at': {'$gt': milisecond}
-            })
 
-            if res == None:
-                today = datetime.today()
-                res = collectionVerifikasi.insert_one({  
-                    'email': data['email'],
-                    'kode': kode_verifikasi,
-                    'created_at': datetime.now(timezone.utc),
-                    'expired_at': datetime(today.year, today.month, today.day, today.hour + 1, today.minute, today.second).timestamp(),
-                })
+            today = datetime.today()
+            theMinute = today.minute
+            theHour = today.hour
+            if (today.minute + 10) >= 60:
+                theMinute = (today.minute + 10) - 60
+                if (today.hour + 1) >= 24:
+                    theHour = 0
             else:
-                kode_verifikasi = res['kode']
+                theMinute += 10
+
+            print(theMinute)
+            print(theHour)
+            res = collectionVerifikasi.insert_one({  
+                'email': data['email'],
+                'kode': kode_verifikasi,
+                'created_at': datetime.now(timezone.utc),
+                'expired_at': datetime(today.year, today.month, today.day, theHour, theMinute, today.second).timestamp(),
+            })
             
             kirim_pesan = EmailMessage()
             kirim_pesan['From'] = os.getenv("EMAIL_SENDER")
@@ -149,29 +153,35 @@ def verifikasi_email():
             }
         elif data['action'] == 'verification_email_code':
             milisecond = int(datetime.now(timezone.utc).timestamp())
-            res = collectionVerifikasi.find_one({
+            res = collectionVerifikasi.find({
                 'email': data['email'],
                 'expired_at': {'$gt': milisecond}
-            })
-            print(res['kode'])
-            if res['kode'] == data['kode']:
-                make_verification_complete = collectionUser.update_one({
-                    'email': res['email']
-                },
-                {
-                    '$set': {
-                        'is_verified': True
-                    }
-                })
-                return {
-                    'status': 'success',
-                    'msg': 'Email berhasil di verifikasi!'
-                }
+            }).sort('expired_at', pymongo.DESCENDING)
+            if res != None:
+                if int(res[0]['kode']) == int(data['kode']):
+                    if data['detail'] == 'reset_password':
+                        return {
+                            'status': 'success',
+                            'msg': 'Kode cocok!'
+                        }
+                    elif data['detail'] == 'activate_my_email':
+                        make_verification_complete = collectionUser.update_one({
+                            'email': res[0]['email']
+                        },
+                        {
+                            '$set': {
+                                'is_verified': True
+                            }
+                        })
+                        return {
+                            'status': 'success',
+                            'msg': 'Email berhasil di verifikasi!'
+                        }
         return {
             'status': 'need_action',
             'msg': 'Email tidak ditemukan!'
         }
-    except:
+    # except:
         return {
             'status': 'error',
             'msg': 'Kesalahan Server!'
@@ -201,6 +211,36 @@ def createUsername():
             'status': 'need_action',
             'msg': 'Silahkan isi username yang valid'
         }
+
+@app.route('/check-username', methods=['POST'])
+def checkUsername():
+    data = request.json
+    resUser = collectionUser.find_one({
+        'email': data['email']
+    })
+    if resUser != None:
+        resPasien = collectionPasien.find_one({
+            'id_user': str(resUser['_id'])
+        })
+        if resPasien != None:
+            if resPasien['username'] != '':
+                return {
+                    'status': 'success',
+                    'msg': 'Username sudah kamu daftarkan!'
+                }
+            else:
+                return {
+                    'status': 'need_action',
+                    'msg': 'Username belum kamu daftarkan!'
+                }
+        return {
+            'status': 'error',
+            'msg': 'Data lengkap kamu belum didaftarkan!'
+        }
+    return {
+        'status': 'error',
+        'msg': 'Email kamu tidak terdaftar pada database kami!'
+    }
 
 @app.route('/register', methods=['POST'])
 def register():
@@ -266,7 +306,38 @@ def register():
             'status': 'error',
             'msg': 'Terjadi kesalahan!'
         }
-    
+
+@app.route('/reset-password', methods=['POST'])
+def resetPaswword():
+    try:
+        data = request.json
+        res = collectionUser.find_one({
+            'email': data['email']
+        })
+
+        if res != None:
+            res = collectionUser.update_one({
+                'email': data['email']
+            },{
+                '$set': {
+                    'password': data['password']
+                }
+            })
+            return {
+                'status': 'success',
+                'msg': 'Reset password berhasil'
+            }
+        
+        return {
+            'status': 'error',
+            'msg': 'Reset password gagal'
+        }
+    except:
+        return {
+            'status': 'error',
+            'msg': 'Reset password gagal'
+        }
+
 @app.route('/get/data-pasien', methods=['GET'])
 def ambilDataUser():
     try:
