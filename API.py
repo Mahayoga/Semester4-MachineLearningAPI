@@ -348,6 +348,7 @@ def ambilDataUser():
         hasil = []
         for data in dataPasien:
             data['_id'] = str(data['_id'])
+            data['id_user'] = str(data['id_user'])
             hasil.append(data)
 
         return {
@@ -447,3 +448,38 @@ def getDataHistoriUser():
         'data_histori': hasil
     }
 
+@app.route('/get/data-glukosa/user', methods=['POST'])
+def getDataGlukosaUser():
+    data = request.json
+    res = collectionHistori.find({
+        'id_user': data['id_user']
+    }).limit(7).sort('created_at', pymongo.DESCENDING)
+    hasil = []
+
+    for glukosa in res:
+        glukosa['_id'] = str(glukosa['_id'])
+        glukosa['id_user'] = str(glukosa['id_user'])
+        hasil.append(glukosa)
+
+    return {
+        'status': 'success',
+        'data_glukosa': hasil
+    }
+
+@app.route('/get/rata-glukosa/user', methods=['POST'])
+def getRataRataGlukosaUser():
+    data = request.json
+    res = collectionHistori.find({
+        'id_user': data['id_user']
+    })
+    hasil = 0
+    i = 0
+
+    for glukosa in res:
+        hasil += float(glukosa['glucose'])
+        i += 1
+
+    return {
+        'status': 'success',
+        'rata_rata_glukosa': hasil / i
+    }
