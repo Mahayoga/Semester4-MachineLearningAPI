@@ -715,7 +715,13 @@ def getRataRataGlukosaUser():
         hasil += float(glukosa['glucose'])
         i += 1
 
-    return {
-        'status': 'success',
-        'rata_rata_glukosa': hasil / i
-    }
+    if i <= 0:
+        return {
+            'status': 'success',
+            'rata_rata_glukosa': 0
+        }
+    else:
+        return {
+            'status': 'success',
+            'rata_rata_glukosa': hasil / i
+        }
