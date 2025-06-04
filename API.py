@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 import numpy as np
 import joblib
 import random as rd
+from bson import ObjectId
 import smtplib
 from email.message import EmailMessage
 from flask import Flask, jsonify
@@ -341,6 +342,113 @@ def resetPaswword():
             'msg': 'Reset password gagal'
         }
 
+@app.route('/get/data-user/all/data', methods=['GET'])
+def getAllDataUser():
+    res = collectionUser.find({})
+    hasil = []
+
+    for data in res:
+        data['_id'] = str(data['_id'])
+        if data['username'] == '':
+            data['username'] = '<i>Username belum terdaftar</i>'
+        hasil.append(data)
+    
+    return {
+        'status': 'success',
+        'data_user': hasil
+
+    }
+
+@app.route('/add/data-user', methods=['POST'])
+def addDataUser():
+    data = request.json
+    res = collectionUser.insert_one({
+        'email': data['email'],
+        'role': data['role'],
+        'username': data['username'],
+        'password': data['password'],
+        'is_verified': False
+    })
+
+    return {
+        'status': 'success'
+    }
+
+@app.route('/get/data-user', methods=['GET'])
+def getDataUser():
+    try:
+        dataUser = collectionUser.find({})
+        hasil = []
+
+        for data in dataUser:
+            data['_id'] = str(data['_id'])
+            hasil.append(data)
+
+        return {
+            'status': 'success',
+            'data_user': hasil
+        }
+    except:
+        return {
+            'status': 'error'
+        }
+
+@app.route('/show/data-user/<id_user>', methods=['GET'])
+def showDataUser(id_user):
+    res = collectionUser.find_one({
+        '_id': ObjectId(id_user)
+    })
+
+    res['_id'] = str(res['_id'])
+
+    return {
+        'status': 'success',
+        'data_user': res
+    }
+
+@app.route('/edit/data-user/<id_user>', methods=['GET'])
+def editDataUser(id_user):
+    res = collectionUser.find_one({
+        '_id': ObjectId(id_user)
+    })
+
+    res['_id'] = str(res['_id'])
+
+    return {
+        'status': 'success',
+        'data_user': res
+    }
+
+@app.route('/update/data-user/<id_user>', methods=['POST'])
+def updateDataUser(id_user):
+    data = request.json
+    res = collectionUser.update_one(
+        {
+            '_id': ObjectId(id_user)
+        },
+        {
+            '$set': {
+                'email': data['email'],
+                'role': data['role'],
+                'username': data['username']
+            }
+        }
+    )
+
+    return {
+        'status': 'success',
+    }
+
+@app.route('/delete/data-user/<id_user>', methods=['GET'])
+def deleteDataUser(id_user):
+    res = collectionUser.delete_one({
+        '_id': ObjectId(id_user)
+    })
+
+    return {
+        'status': 'success',
+    }
+
 @app.route('/get/data-pasien', methods=['GET'])
 def ambilDataUser():
     try:
@@ -349,6 +457,10 @@ def ambilDataUser():
         for data in dataPasien:
             data['_id'] = str(data['_id'])
             data['id_user'] = str(data['id_user'])
+            if data['gender'] == 'l':
+                data['gender'] = 'Laki - Laki'
+            else:
+                data['gender'] = 'Perempuan'
             hasil.append(data)
 
         return {
@@ -360,20 +472,99 @@ def ambilDataUser():
             'status': 'error',
             'msg': 'Terjadi kesalahan!'
         }
+
+@app.route('/show/data-pasien/<id_pasien>', methods=['GET'])
+def showDataPasien(id_pasien):
+    res = collectionPasien.find_one({
+        '_id': ObjectId(id_pasien)
+    })
+    resUser = collectionUser.find_one({
+        '_id': res['id_user']
+    })
     
+    res['email'] = resUser['email']
+    res['_id'] = str(res['_id'])
+    res['id_user'] = str(res['id_user'])
+
+    return {
+        'status': 'success',
+        'data_pasien': res
+    }
+
+@app.route('/edit/data-pasien/<id_pasien>', methods=['GET'])
+def editDatapasien(id_pasien):
+    res = collectionPasien.find_one({
+        '_id': ObjectId(id_pasien)
+    })
+
+    res['_id'] = str(res['_id'])
+    res['id_user'] = str(res['id_user'])
+
+    return {
+        'status': 'success',
+        'data_pasien': res
+    }
+
+@app.route('/update/data-pasien/<id_pasien>', methods=['POST'])
+def updateDataPasien(id_pasien):
+    data = request.json
+    res = collectionPasien.update_one(
+        {
+            '_id': ObjectId(id_pasien)
+        },
+        {
+            '$set': {
+                'nama_depan': data['nama_depan'],
+                'nama_belakang': data['nama_belakang'],
+                'tanggal_lahir': data['tanggal_lahir'],
+                'umur': data['umur'],
+                'gender': data['gender'],
+                'alamat': data['alamat'],
+            }
+        }
+    )
+
+    return {
+        'status': 'success',
+    }
+
+@app.route('/delete/data-pasien/<id_pasien>', methods=['GET'])
+def deleteDataPasien(id_pasien):
+    res = collectionPasien.delete_one({
+        '_id': ObjectId(id_pasien)
+    })
+
+    return {
+        'status': 'success',
+    }
+
+@app.route('/create/data-pasien/', methods=['GET'])
+def createDataPasien():
+    res = collectionUser.find({})
+    hasil = []
+
+    for data in res:
+        data['_id'] = str(data['_id'])
+        hasil.append(data)
+
+    return {
+        'status': 'success',
+        'data_user': hasil
+    }
+
 @app.route('/add/data-pasien', methods=['POST'])
 def simpanDataUser():
     try:
         requestData = request.json
-        insertData = collectionUser.insert_one({
+        insertData = collectionPasien.insert_one({
             'nama_depan': requestData['nama_depan'],
             'nama_belakang': requestData['nama_belakang'],
+            'tanggal_lahir': requestData['tanggal_lahir'],
             'umur': requestData['umur'],
-            'jenis_kelamin': requestData['jenis_kelamin'],
+            'gender': requestData['jenis_kelamin'],
             'alamat': requestData['alamat'],
             'role': 'user',
-            'email': requestData['email'],
-            'password': requestData['password'],
+            'id_user': ObjectId(requestData['id_user']),
         })
         return {
             'status': 'success'
@@ -384,6 +575,51 @@ def simpanDataUser():
             'msg': 'Terjadi kesalahan!'
         }
     
+@app.route('/get/data-histori', methods=['GET'])
+def getDataHistori():
+    res = collectionHistori.find({})
+    hasil = []
+
+    for data in res:
+        data['_id'] = str(data['_id'])
+        data['data_user'] = collectionUser.find_one({
+            '_id': ObjectId(data['id_user'])
+        })
+        data['data_pasien'] = collectionPasien.find_one({
+            'id_user': ObjectId(data['id_user'])
+        })
+        data['data_user']['_id'] = str(data['data_user']['_id'])
+        data['data_pasien']['_id'] = str(data['data_pasien']['_id'])
+        data['data_pasien']['id_user'] = str(data['data_pasien']['id_user'])
+        hasil.append(data)
+
+    return {
+        'status': 'success',
+        'data_histori': hasil
+    }
+
+@app.route('/show/data-histori/<id_histori>', methods=['GET'])
+def showDataHistori(id_histori):
+    res = collectionHistori.find_one({
+        '_id': ObjectId(id_histori)
+    })
+    
+    res['_id'] = str(res['_id'])
+    res['data_user'] = collectionUser.find_one({
+        '_id': ObjectId(res['id_user'])
+    })
+    res['data_pasien'] = collectionPasien.find_one({
+        'id_user': ObjectId(res['id_user'])
+    })
+    res['data_user']['_id'] = str(res['data_user']['_id'])
+    res['data_pasien']['_id'] = str(res['data_pasien']['_id'])
+    res['data_pasien']['id_user'] = str(res['data_pasien']['id_user'])
+
+    return {
+        'status': 'success',
+        'data_histori': res
+    }
+
 @app.route('/lakukan-prediksi', methods=['POST'])
 def lakukanPrediksi():
     try:
